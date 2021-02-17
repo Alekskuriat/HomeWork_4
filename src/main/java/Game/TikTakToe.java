@@ -5,7 +5,7 @@ import java.util.Scanner;
 
 public class TikTakToe {
     // Указать размер игрового поля от 3 до 20
-    static final int MAP_SIZE = 5;
+    static final int MAP_SIZE = 3;
 
     static int winSize;
 
@@ -18,6 +18,12 @@ public class TikTakToe {
     static final Random random = new Random();
 
     static final char[][] MAP = new char[MAP_SIZE][MAP_SIZE];
+
+    static int[] rowProbability = new int[MAP_SIZE];
+    static int[] columnProbability = new int[MAP_SIZE];
+    static int diagProbability = 0;
+    static int sideProbability = 0;
+
 
     static int turnsCount;
     static int rowNumber;
@@ -82,9 +88,9 @@ public class TikTakToe {
                     System.out.printf("%3d",i);
                     continue;
                 }
-            System.out.printf("%3c",MAP[i-1][j-1]);
+                System.out.printf("%3c",MAP[i-1][j-1]);
             }
-        System.out.println();
+            System.out.println();
         }
     }
 
@@ -92,6 +98,9 @@ public class TikTakToe {
         turnsCount = 0;
 
         while (true) {
+
+            nullificationProbabilities();
+
             humanTurn();
             printMap();
             startChecking(DOT_HUMAN);
@@ -100,6 +109,16 @@ public class TikTakToe {
             printMap();
             startChecking(DOT_AI);
         }
+    }
+
+    private static void nullificationProbabilities() {
+        for (int i = 0; i < MAP_SIZE; i++) {
+            rowProbability[i] = 0;
+        }
+        for (int i = 0; i < MAP_SIZE; i++) {
+            columnProbability[i] = 0;
+        }
+        diagProbability = sideProbability = 0;
     }
 
     private static void humanTurn() {
@@ -138,13 +157,27 @@ public class TikTakToe {
     private static void turnAI() {
         System.out.println("\nХод компьютера!");
 
-        do {
-            rowNumber = random.nextInt(MAP_SIZE);
-            columnNumber = random.nextInt(MAP_SIZE);
-        } while (!isCellOccupancy(rowNumber, columnNumber));
+        if (MAP_SIZE == 3) {
+            calculatingRowProbabilities();
+            calculatingColumnProbabilities();
+            calculatingDiagonalProbabilities();
 
-        MAP[rowNumber][columnNumber] = DOT_AI;
-        turnsCount++;
+            if (!cellSelection()){
+                do {
+                    columnNumber = random.nextInt(MAP_SIZE);
+                    rowNumber = random.nextInt(MAP_SIZE);
+                } while (!isCellOccupancy(rowNumber, columnNumber));
+
+                cellFillingDotAI(rowNumber, columnNumber);
+            }
+        } else {
+            do {
+                rowNumber = random.nextInt(MAP_SIZE);
+                columnNumber = random.nextInt(MAP_SIZE);
+            } while (!isCellOccupancy(rowNumber, columnNumber));
+
+            cellFillingDotAI(rowNumber, columnNumber);
+        }
     }
 
     private static void startChecking(char DOT) {
@@ -154,8 +187,8 @@ public class TikTakToe {
     }
 
     private static void processingIncorrectInput() {
-            System.out.println("Ошибка ввода! Введите число в диапазоне размера игрового поля");
-            in.nextLine();
+        System.out.println("Ошибка ввода! Введите число в диапазоне размера игрового поля");
+        in.nextLine();
     }
 
     private static boolean isHumanTurnValid(int rowNumber, int columnNumber) {
@@ -175,6 +208,48 @@ public class TikTakToe {
 
     private static boolean isCellOccupancy(int rowNumber, int columnNumber) {
         return MAP[rowNumber][columnNumber] == DOT_EMPTY;
+    }
+
+    private static boolean cellSelection() {
+        for (int i = 0; i < MAP_SIZE; i++) {
+            if (rowProbability[i] == 2 ){
+                rowNumber = i;
+                do {
+                    columnNumber = random.nextInt(MAP_SIZE);
+                } while (!isCellOccupancy(rowNumber, columnNumber));
+                cellFillingDotAI(rowNumber, columnNumber);
+                return true;
+            }
+            if (columnProbability[i] == 2 ){
+                columnNumber = i;
+                do {
+                    rowNumber = random.nextInt(MAP_SIZE);
+                } while (!isCellOccupancy(rowNumber, columnNumber));
+                cellFillingDotAI(rowNumber, columnNumber);
+                return true;
+            }
+            if (diagProbability == 2 ){
+                do {
+                    columnNumber = rowNumber = random.nextInt(MAP_SIZE);
+                } while (!isCellOccupancy(rowNumber, columnNumber));
+                cellFillingDotAI(rowNumber, columnNumber);
+                return true;
+            }
+            if (sideProbability == 2 ){
+                do {
+                    columnNumber = random.nextInt(MAP_SIZE);
+                    rowNumber = MAP_SIZE - columnNumber - 1;
+                } while (!isCellOccupancy(rowNumber, columnNumber));
+                cellFillingDotAI(rowNumber, columnNumber);
+                return true;
+            }
+        }
+       return false;
+    }
+
+    private static void cellFillingDotAI(int row, int column) {
+        MAP[row][column] = DOT_AI;
+        turnsCount++;
     }
 
     private static void checkEnd(char symbol) {
@@ -197,8 +272,8 @@ public class TikTakToe {
 
     private static boolean checkWin(char symbol, int row, int column) {
         return (checkingRows(row, symbol) ||
-                    checkingColumns(column, symbol) ||
-                        checkingDiagonals(row, column, symbol));
+                checkingColumns(column, symbol) ||
+                checkingDiagonals(row, column, symbol));
     }
 
     private static boolean checkingRows(int row, char symbol) {
@@ -263,6 +338,49 @@ public class TikTakToe {
         while ((startSide_i < MAP_SIZE - 1  &&  startSide_j > 0)){
             startSide_i++;
             startSide_j--;
+        }
+    }
+
+    private static void calculatingRowProbabilities() {
+        for (int i = 0; i < MAP_SIZE; i++) {
+            for (int j = 0; j < MAP_SIZE; j++) {
+                if (MAP[i][j] == DOT_AI) {
+                    rowProbability[i] = 0;
+                    break;
+                }else if (MAP[i][j] == DOT_HUMAN) {
+                    rowProbability[i]++;
+                }
+            }
+        }
+    }
+
+    private static void calculatingColumnProbabilities() {
+        for (int j = 0; j < MAP_SIZE; j++) {
+            for (int i = 0; i < MAP_SIZE; i++) {
+                if (MAP[i][j] == DOT_AI) {
+                    columnProbability[j] = 0;
+                    break;
+                }else if (MAP[i][j] == DOT_HUMAN) {
+                    columnProbability[j]++;
+                }
+            }
+        }
+    }
+
+    private static void calculatingDiagonalProbabilities() {
+        for (int i = 0, j = 0; i < MAP_SIZE; i++, j++) {
+            if (MAP[i][j] == DOT_HUMAN) {
+                diagProbability++;
+            }else if (MAP[i][j] == DOT_AI) {
+                diagProbability = 0;
+            }
+        }
+        for (int i = MAP_SIZE - 1, j = 0; j < MAP_SIZE; i--, j++) {
+            if (MAP[i][j] == DOT_HUMAN) {
+                sideProbability++;
+            }else if (MAP[i][j] == DOT_AI) {
+                sideProbability = 0;
+            }
         }
     }
 }
